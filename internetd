@@ -1,0 +1,62 @@
+#! /bin/sh
+
+# Script para adicionar o script internet.sh na inicializacao do Linux.
+# Configurar os parametros DAEMON, PIDFILE, NAME e DESC de acordo com o path e nome do script.
+# Descricao da configuracao: http://ggarnier.wordpress.com/2008/11/24/script-para-verificar-o-status-da-conexao-pppoe/
+#
+# Autor: Guilherme Garnier (http://ggarnier.wordpress.com/)
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/home/guilherme/scripts/internet.sh
+PIDFILE=/home/guilherme/scripts/internet.pid
+NAME=internetd
+DESC="Internet"
+
+test -f $DAEMON || exit 0
+
+set -e
+
+. /lib/lsb/init-functions
+
+case "$1" in
+  start)
+    log_begin_msg "Starting $DESC: $NAME"
+    start-stop-daemon --start --quiet --background -m --pidfile "$PIDFILE" --exec $DAEMON
+    log_end_msg $?
+    ;;
+  stop)
+    log_begin_msg "Stopping $DESC: $NAME"
+    start-stop-daemon --stop --quiet --pidfile $PIDFILE
+    rm -f $PIDFILE
+    log_end_msg $?
+    ;;
+
+  restart|force-reload)
+    log_begin_msg "Restarting $DESC: $NAME"
+    if start-stop-daemon --stop --quiet --pidfile $PIDFILE; then
+        start-stop-daemon --start --quiet --background -m --pidfile "$PIDFILE" --exec $DAEMON
+    fi
+    log_end_msg $?
+    ;;
+  status)
+    echo -n "Status of $DESC: "
+    if [ ! -r "$PIDFILE" ]; then
+        echo "$NAME is not running."
+        exit 3
+    fi
+    if read pid < "$PIDFILE" && ps -p "$pid" > /dev/null 2>&1; then
+        echo "$NAME is running."
+        exit 0
+    else
+        echo "$NAME is not running but $PIDFILE exists."
+        exit 1
+    fi
+    ;;
+  *)
+    N=/etc/init.d/${0##*/}
+    echo "Usage: $N {start|stop|restart|force-reload|status}" >&2
+    exit 1
+    ;;
+esac
+
+exit 0
